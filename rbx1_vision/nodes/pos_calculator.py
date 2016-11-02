@@ -21,16 +21,20 @@ class PositionCalculator():
                         
         # Set the shutdown function (stop the robot)
         rospy.on_shutdown(self.shutdown)
-        self.flag = True
+
         # How often should we update the robot's motion?
         self.rate = rospy.get_param("~rate", 10)
         r = rospy.Rate(self.rate)
         
-        # Scale the ROI by this factor to avoid background distance values around the edges
-        self.scale_roi = rospy.get_param("~scale_roi", 0.6)
-                # The maximum distance a target can be from the robot for us to track
+        # Scale the ROI by this factor to avoid noisy background distance out of the object
+        self.scale_roi = rospy.get_param("~scale_roi", 0.8)
+        # The minimum and maximum distance a target can be from the robot for us to track
         self.max_z = rospy.get_param("~max_z", 4000)
         self.min_z = rospy.get_param("~min_z", 1000)
+
+        self.pos_pub = rospy.Publisher("direction", Vector3, queue_size=1)
+        
+
         self.roi_visible = False
         self.roi_arm_visible = False
         
@@ -40,7 +44,6 @@ class PositionCalculator():
         self.position = Vector3()
         self.position_arm = Vector3()
         self.direction = Vector3()
-        self.distance = 0.0
         
         # We will get the image width and height from the camera_info topic
         self.image_width = 0
@@ -82,11 +85,11 @@ class PositionCalculator():
         while not rospy.is_shutdown():
             
             if(self.roi_visible and self.roi_arm_visible):
-                #self.direction.x = self.position.x - self.position_arm.x
-                #self.direction.y = self.position.y - self.position_arm.y
-                #self.direction.z = self.position.z - self.position_arm.z
-                #self.distance = sqrt(self.direction.x**2 + self.direction.y**2 + self.direction.z**2)
-                print self.position.x, self.position.y, self.position.y 
+                self.direction.x = self.position.x - self.position_arm.x
+                self.direction.y = self.position.y - self.position_arm.y
+                self.direction.z = self.position.z - self.position_arm.z
+                print self.position.x, self.position.y, self.position.z 
+                self.pub_position()
             else:
                 print "Arm or Object is not visible."
             
@@ -97,7 +100,7 @@ class PositionCalculator():
         
         # If the ROI has a width or height of 0, we have lost the target
         if msg.width == 0 or msg.height == 0:
-            print "Object is not visible now"
+            print "Object loses track"
             self.roi_visible = False
             return
         else:
@@ -140,8 +143,8 @@ class PositionCalculator():
                 
                 # Get the 3D coordinates of thw world
                 z_w = z / 1000.0
-                x_w = (x + self.roi.width / 2 - self.camera_matrix[0,2]) * z_w / self.camera_matrix[0,0]
-                y_w = (y + self.roi.height / 2 - self.camera_matrix[1,2]) * z_w / self.camera_matrix[1,1]
+                x_w = (1.0*(x + self.roi.width / 2) - self.camera_matrix[0,2]) * z_w / self.camera_matrix[0,0]
+                y_w = (1.0*(y + self.roi.height / 2) - self.camera_matrix[1,2]) * z_w / self.camera_matrix[1,1]
                 
                 # Increment the sum and count
                 npoints += 1.0
@@ -159,7 +162,7 @@ class PositionCalculator():
         
         # If the ROI has a width or height of 0, we have lost the target
         if msg.width == 0 or msg.height == 0:
-            print "Arm is not visible now"
+            print "Arm loses track"
             self.roi_arm_visible = False
             return
         else:
@@ -232,6 +235,12 @@ class PositionCalculator():
         self.image_height = msg.height
         P = np.asarray(msg.P)
         self.camera_matrix = np.reshape(P,(3,4))
+
+    def pub_position(self):
+        try:
+            self.pos_pub.publish(self.direction)
+        except:
+            rospy.loginfo("Publishing 3D direction failed")
 
     def shutdown(self):
         rospy.loginfo("Stopping Calculating the 3D Position...")
