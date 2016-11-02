@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-""" camshift_node.py - Version 1.1 2013-12-20
+""" camshift2_node.py - Version 1.1 2013-12-20
 
     Modification of the ROS OpenCV Camshift example using cv_bridge and publishing the ROI
     coordinates to the /roi topic.   
@@ -14,7 +14,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 import numpy as np
 
-class CamShiftNode(ROS2OpenCV2):
+class CamShiftNode2(ROS2OpenCV2):
     def __init__(self, node_name):
         ROS2OpenCV2.__init__(self, node_name)
 
@@ -100,7 +100,10 @@ class CamShiftNode(ROS2OpenCV2):
     
                 # Threshold the backprojection
                 ret, backproject = cv2.threshold(backproject, self.threshold, 255, cv.CV_THRESH_TOZERO)
-
+                bp_copy = backproject.copy()
+                (contours, hierarchy) = cv2.findContours(bp_copy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                self.contours = contours
+                
                 x, y, w, h = self.track_window
                 if self.track_window is None or w <= 0 or h <=0:
                     self.track_window = 0, 0, self.frame_width - 1, self.frame_height - 1
@@ -116,6 +119,7 @@ class CamShiftNode(ROS2OpenCV2):
         except:
             pass
 
+        self.pub_arm_flag = True
         return cv_image
         
     def show_hist(self):
@@ -153,8 +157,8 @@ class CamShiftNode(ROS2OpenCV2):
 
 if __name__ == '__main__':
     try:
-        node_name = "camshift"
-        CamShiftNode(node_name)
+        node_name = "camshift2"
+        CamShiftNode2(node_name)
         try:
             rospy.init_node(node_name)
         except:

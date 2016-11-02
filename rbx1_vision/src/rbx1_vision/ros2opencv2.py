@@ -57,7 +57,8 @@ class ROS2OpenCV2(object):
         # Initialize the Region of Interest and its publisher
         self.ROI = RegionOfInterest()
         self.roi_pub = rospy.Publisher("/roi", RegionOfInterest, queue_size=1)
-        
+        self.roi_pub_arm = rospy.Publisher("/roi_arm", RegionOfInterest, queue_size=1)
+        self.pub_arm_flag = False
         # Initialize a number of global variables
         self.frame = None
         self.frame_size = None
@@ -85,6 +86,8 @@ class ROS2OpenCV2(object):
         self.resize_window_width = 0
         self.resize_window_height = 0
         self.face_tracking = False
+        self.contours = list();
+        self.flag = True
         
         # Create the main display window
         self.cv_window_name = self.node_name
@@ -206,6 +209,15 @@ class ROS2OpenCV2(object):
                 (pt1_x, pt1_y, w, h) = self.detect_box
                 if self.show_boxes:
                     cv2.rectangle(self.display_image, (pt1_x, pt1_y), (pt1_x + w, pt1_y + h), cv.RGB(50, 255, 50), self.feature_size, 8, 0)
+
+        #if len(self.contours) > 0:
+        # 	tmp_contours = list()
+        #	for i in range(0, len(self.contours)):
+        #		if(len(self.contours[i]) > 48):
+        #			tmp_contours.append(self.contours[i])
+        #	print(len(tmp_contours))
+        #	cv2.drawContours(self.display_image, tmp_contours, -1, cv.RGB(255, 0, 0), 3)
+
         
         # Publish the ROI
         self.publish_roi()
@@ -318,7 +330,10 @@ class ROS2OpenCV2(object):
             ROI.y_offset = int(roi_box[1])
             ROI.width = int(roi_box[2])
             ROI.height = int(roi_box[3])
-            self.roi_pub.publish(ROI)
+            if(self.pub_arm_flag):
+            	self.roi_pub_arm.publish(ROI)
+            else:
+            	self.roi_pub.publish(ROI)
         except:
             rospy.loginfo("Publishing ROI failed")
           
