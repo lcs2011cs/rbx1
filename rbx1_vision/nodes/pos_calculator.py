@@ -8,9 +8,10 @@
 """
 
 import rospy
-from sensor_msgs.msg import Image, RegionOfInterest, CameraInfo
+from sensor_msgs.msg import Image, RegionOfInterest, CameraInfo, PointCloud2
+from sensor_msgs import point_cloud2
 from geometry_msgs.msg import Vector3
-from math import isnan,sqrt
+from math import isnan
 from cv2 import cv as cv
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
@@ -68,6 +69,10 @@ class PositionCalculator():
         rospy.wait_for_message('depth_image', Image)           
         # Subscribe to the depth image
         self.depth_subscriber = rospy.Subscriber("depth_image", Image, self.convert_depth_image, queue_size=1)
+
+        #rospy.loginfo("Waiting for point_cloud topic...")
+        #rospy.wait_for_message('point_cloud', PointCloud2)
+        #self.point_subscriber = rospy.Subscriber("point_cloud", PointCloud2, self.handle_points, queue_size=1)
         
         # Subscribe to the ROI topic and set the callback to update the robot's motion
         rospy.Subscriber('roi', RegionOfInterest, self.calculate_pos, queue_size=1)
@@ -88,13 +93,20 @@ class PositionCalculator():
                 self.direction.x = self.position.x - self.position_arm.x
                 self.direction.y = self.position.y - self.position_arm.y
                 self.direction.z = self.position.z - self.position_arm.z
-                print self.position.x, self.position.y, self.position.z 
                 self.pub_position()
             else:
                 print "Arm or Object is not visible."
             
             # Sleep for 1/self.rate seconds
             r.sleep()
+
+    def handle_points(self, msg):
+
+        #print msg[0,0]
+        n = 0
+        for point in point_cloud2.read_points(msg, skip_nans = True):
+            n += 1
+        #print n
                         
     def calculate_pos(self, msg):
         
@@ -143,8 +155,8 @@ class PositionCalculator():
                 
                 # Get the 3D coordinates of thw world
                 z_w = z / 1000.0
-                x_w = (1.0*(x + self.roi.width / 2) - self.camera_matrix[0,2]) * z_w / self.camera_matrix[0,0]
-                y_w = (1.0*(y + self.roi.height / 2) - self.camera_matrix[1,2]) * z_w / self.camera_matrix[1,1]
+                x_w = (1.0 * x - self.camera_matrix[0,2]) * z_w / self.camera_matrix[0,0]
+                y_w = (1.0 * y - self.camera_matrix[1,2]) * z_w / self.camera_matrix[1,1]
                 
                 # Increment the sum and count
                 npoints += 1.0
@@ -206,8 +218,8 @@ class PositionCalculator():
                 # Increment the sum and count
 
                 z_w = z / 1000.0
-                x_w = (x + self.roi.width / 2 - self.camera_matrix[0,2]) * z_w / self.camera_matrix[0,0]
-                y_w = (y + self.roi.height / 2 - self.camera_matrix[1,2]) * z_w / self.camera_matrix[1,1]
+                x_w = (1.0 * x - self.camera_matrix[0,2]) * z_w / self.camera_matrix[0,0]
+                y_w = (1.0 * y - self.camera_matrix[1,2]) * z_w / self.camera_matrix[1,1]
 
                 npoints += 1.0
                 sum_z = sum_z + z_w

@@ -87,7 +87,6 @@ class ROS2OpenCV2(object):
         self.resize_window_height = 0
         self.face_tracking = False
         self.contours = list();
-        self.flag = True
         
         # Create the main display window
         self.cv_window_name = self.node_name
