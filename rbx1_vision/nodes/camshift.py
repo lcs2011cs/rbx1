@@ -101,7 +101,7 @@ class CamShiftNode(ROS2OpenCV2):
                 # Threshold the backprojection
                 ret, backproject = cv2.threshold(backproject, self.threshold, 255, cv.CV_THRESH_TOZERO)
 
-                x, y, w, h = self.track_window
+                x, y, w, h = self.track_windowcle
                 if self.track_window is None or w <= 0 or h <=0:
                     self.track_window = 0, 0, self.frame_width - 1, self.frame_height - 1
                 

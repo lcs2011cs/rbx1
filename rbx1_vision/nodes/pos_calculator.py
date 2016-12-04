@@ -31,7 +31,7 @@ class PositionCalculator():
         self.scale_roi = rospy.get_param("~scale_roi", 0.8)
         # The minimum and maximum distance a target can be from the robot for us to track
         self.max_z = rospy.get_param("~max_z", 4000)
-        self.min_z = rospy.get_param("~min_z", 1000)
+        self.min_z = rospy.get_param("~min_z", 500)
 
         self.pos_pub = rospy.Publisher("direction", Vector3, queue_size=1)
         
@@ -136,7 +136,7 @@ class PositionCalculator():
         for x in range(min_x, max_x):
             for y in range(min_y, max_y):
                 try:
-                    # Get a depth value in meters
+                    # Get a depth value in millimeters
                     z = self.depth_array[y, x]
                     
                     # Check for NaN values returned by the camera driver
