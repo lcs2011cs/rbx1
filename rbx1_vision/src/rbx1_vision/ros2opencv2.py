@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 """ ros2opencv2.py - Version 1.1 2013-12-20
-
     A ROS-to-OpenCV node that uses cv_bridge to map a ROS image topic and optionally a ROS
     depth image topic to the equivalent OpenCV image stream(s).
     
@@ -12,7 +11,6 @@
     
     Created for the Pi Robot Project: http://www.pirobot.org
     Copyright (c) 2011 Patrick Goebel.  All rights reserved.
-
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -412,3 +410,4 @@ def main(args):
 
 if __name__ == '__main__':
     main(sys.argv)
+

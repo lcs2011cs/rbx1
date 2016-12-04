@@ -13,6 +13,7 @@ from rbx1_vision.ros2opencv2 import ROS2OpenCV2
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 import numpy as np
+from rbx1_vision.msg import *
 
 class CamShiftNode2(ROS2OpenCV2):
     def __init__(self, node_name):
@@ -47,6 +48,8 @@ class CamShiftNode2(ROS2OpenCV2):
         self.hist = None
         self.track_window = None
         self.show_backproj = False
+
+        self.armpos_pub = rospy.Publisher("/arm_pos", PosTrack, queue_size=1)
     
     # These are the callbacks for the slider controls
     def set_smin(self, pos):
@@ -72,7 +75,6 @@ class CamShiftNode2(ROS2OpenCV2):
             
             # Create a mask using the current saturation and value parameters
             mask = cv2.inRange(hsv, np.array((0., self.smin, self.vmin)), np.array((180., 255., self.vmax)))
-            
             # If the user is making a selection with the mouse, 
             # calculate a new histogram to track
             if self.selection is not None:
@@ -86,7 +88,8 @@ class CamShiftNode2(ROS2OpenCV2):
                 cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX);
                 self.hist = self.hist.reshape(-1)
                 self.show_hist()
-    
+            
+
             if self.detect_box is not None:
                 self.selection = None
             
@@ -113,6 +116,7 @@ class CamShiftNode2(ROS2OpenCV2):
                 
                 # Run the CamShift algorithm
                 self.track_box, self.track_window = cv2.CamShift(backproject, self.track_window, term_crit)
+                self.publish_arm_pos()
     
                 # Display the resulting backprojection
                 cv2.imshow("Backproject", backproject)
@@ -121,6 +125,21 @@ class CamShiftNode2(ROS2OpenCV2):
 
         self.pub_arm_flag = True
         return cv_image
+
+    def publish_arm_pos(self):
+        ArmPos = PosTrack()
+        if(self.track_box is not None):
+            ArmPos.x = self.track_box[0][0]
+            ArmPos.y = self.track_box[0][1]
+            ArmPos.width = self.track_box[1][0]
+            ArmPos.height = self.track_box[1][1]
+            ArmPos.angle = self.track_box[2]
+        else:
+            print "Tracking not started"
+        try:
+            self.armpos_pub.publish(ArmPos)
+        except:
+            rospy.loginfo("Publishing Arm Position failed")
         
     def show_hist(self):
         bin_count = self.hist.shape[0]

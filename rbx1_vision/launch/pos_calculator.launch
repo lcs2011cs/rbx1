@@ -7,8 +7,8 @@
 
     <rosparam>
        rate: 10
-       max_z: 4000
-       min_z: 500
+       max_z: 5000
+       min_z: 100
        scale_roi: 0.8
     </rosparam>
     

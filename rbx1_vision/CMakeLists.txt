@@ -2,8 +2,28 @@ cmake_minimum_required(VERSION 2.8.3)
 
 project(rbx1_vision)
 
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED COMPONENTS
+	std_msgs
+	message_generation
+)
 
-catkin_package()
+add_message_files(
+	FILES
+	PosTrack.msg
+)
 
 catkin_python_setup()
+
+generate_messages(
+	DEPENDENCIES
+	std_msgs
+)
+
+catkin_package(
+	CATKIN_DEPENDS message_runtime
+)
+
+
+
+
+

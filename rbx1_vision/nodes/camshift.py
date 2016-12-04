@@ -12,6 +12,7 @@ from cv2 import cv as cv
 from rbx1_vision.ros2opencv2 import ROS2OpenCV2
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
+from rbx1_vision.msg import *
 import numpy as np
 
 class CamShiftNode(ROS2OpenCV2):
@@ -47,6 +48,8 @@ class CamShiftNode(ROS2OpenCV2):
         self.hist = None
         self.track_window = None
         self.show_backproj = False
+
+        self.objpos_pub = rospy.Publisher("/object_pos", PosTrack, queue_size=1)
     
     # These are the callbacks for the slider controls
     def set_smin(self, pos):
@@ -66,13 +69,13 @@ class CamShiftNode(ROS2OpenCV2):
         try:
             # First blur the image
             frame = cv2.blur(cv_image, (5, 5))
-            
+
             # Convert from RGB to HSV space
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            
+
             # Create a mask using the current saturation and value parameters
             mask = cv2.inRange(hsv, np.array((0., self.smin, self.vmin)), np.array((180., 255., self.vmax)))
-            
+
             # If the user is making a selection with the mouse, 
             # calculate a new histogram to track
             if self.selection is not None:
@@ -86,7 +89,7 @@ class CamShiftNode(ROS2OpenCV2):
                 cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX);
                 self.hist = self.hist.reshape(-1)
                 self.show_hist()
-    
+
             if self.detect_box is not None:
                 self.selection = None
             
@@ -94,14 +97,14 @@ class CamShiftNode(ROS2OpenCV2):
             if self.hist is not None:
                 # Compute the backprojection from the histogram
                 backproject = cv2.calcBackProject([hsv], [0], self.hist, [0, 180], 1)
-                
+
                 # Mask the backprojection with the mask created earlier
                 backproject &= mask
     
                 # Threshold the backprojection
                 ret, backproject = cv2.threshold(backproject, self.threshold, 255, cv.CV_THRESH_TOZERO)
 
-                x, y, w, h = self.track_windowcle
+                x, y, w, h = self.track_window
                 if self.track_window is None or w <= 0 or h <=0:
                     self.track_window = 0, 0, self.frame_width - 1, self.frame_height - 1
                 
@@ -110,13 +113,28 @@ class CamShiftNode(ROS2OpenCV2):
                 
                 # Run the CamShift algorithm
                 self.track_box, self.track_window = cv2.CamShift(backproject, self.track_window, term_crit)
-    
+                self.publish_object_pos()
                 # Display the resulting backprojection
                 cv2.imshow("Backproject", backproject)
         except:
             pass
 
         return cv_image
+
+    def publish_object_pos(self):
+    	ObjectPos = PosTrack()
+    	if(self.track_box is not None):
+    		ObjectPos.x = self.track_box[0][0]
+    		ObjectPos.y = self.track_box[0][1]
+    		ObjectPos.width = self.track_box[1][0]
+    		ObjectPos.height = self.track_box[1][1]
+    		ObjectPos.angle = self.track_box[2]
+    	else:
+    		print "Tracking not started"
+    	try:
+    		self.objpos_pub.publish(ObjectPos)
+    	except:
+        	rospy.loginfo("Publishing Object Position failed")
         
     def show_hist(self):
         bin_count = self.hist.shape[0]
