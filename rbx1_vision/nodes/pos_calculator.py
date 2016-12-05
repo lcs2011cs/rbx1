@@ -84,31 +84,31 @@ class PositionCalculator():
         # Begin the tracking loop
         while not rospy.is_shutdown():
             if self.object_visible and self.arm_visible:
-                print self.position_arm.x, self.position_arm.y, self.position_arm.z
-                #self.pub_position()
+                #print self.position_arm.x, self.position_arm.y, self.position_arm.z
+                self.pub_position()
             else:
                 print "Arm or Object is not visible."
             
             # Sleep for 1/self.rate seconds
             r.sleep()
 
+    #You could also use pointcloud to get the corrdinates
     def handle_points(self, msg):
 
+        n = npoints = sum_z = 0
         for point in point_cloud2.read_points(msg, skip_nans = False):
             n += 1
-            if(n < (max_y + 1) * 640 and n > min_y * 640):
-                m = n % 640
-                if(m >= min_x and m <= max_x):
-                    if(isnan(point[2])):
-                        pass
-                    else:
-                        if(point[2] > 3.2):
-                            l = n / 640
-                            r = n % 640
-                            self.outlier.append( ((r-min_x) * 1.0/scaled_width, (l-min_y) * 1.0 / scaled_height) )
-                        sum_z = sum_z + point[2]
-                        npoints += 1.0
+            x = n % 640
+            y = n / 640
 
+            if(self.inarea(x,y,self.obj_vertices)):
+                if(isnan(point[2])):
+                    pass
+                else:
+                    npoints += 1.0
+                    sum_z += point[2] * 1.0
+        if(npoints > 0.5):
+            self.position.z = sum_z / npoints  
                         
     def calculate_pos(self, msg):
         
