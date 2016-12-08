@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
 """ camshift_node.py - Version 1.1 2013-12-20
+    Tracking an object by its color info (Track a color blob)
 
     Modification of the ROS OpenCV Camshift example using cv_bridge and publishing the ROI
-    coordinates to the /roi topic.   
+    coordinates(rectangle aligned to x,y-axis) to the /roi topic.  
+
+    Publish the tracking ROI(rotated 2D rectangle) to /object_pos topic  
 """
 
 import rospy
@@ -49,6 +52,8 @@ class CamShiftNode(ROS2OpenCV2):
         self.track_window = None
         self.show_backproj = False
 
+        # Publish the object tracking info to topic /object_pos
+        # The msg type is PosTrack, which exactly represents the rotated rectangle as the convex hull of the object
         self.objpos_pub = rospy.Publisher("/object_pos", PosTrack, queue_size=1)
     
     # These are the callbacks for the slider controls
@@ -113,7 +118,10 @@ class CamShiftNode(ROS2OpenCV2):
                 
                 # Run the CamShift algorithm
                 self.track_box, self.track_window = cv2.CamShift(backproject, self.track_window, term_crit)
+                
+                # Publish the object roi
                 self.publish_object_pos()
+
                 # Display the resulting backprojection
                 cv2.imshow("Backproject", backproject)
         except:
@@ -130,7 +138,7 @@ class CamShiftNode(ROS2OpenCV2):
     		ObjectPos.height = self.track_box[1][1]
     		ObjectPos.angle = self.track_box[2]
     	else:
-    		print "Tracking not started"
+    		print "Object tracking not started"
     	try:
     		self.objpos_pub.publish(ObjectPos)
     	except:
@@ -179,6 +187,6 @@ if __name__ == '__main__':
             pass
         rospy.spin()
     except KeyboardInterrupt:
-        print "Shutting down vision node."
+        print "Shutting down object vision node."
         cv.DestroyAllWindows()
 

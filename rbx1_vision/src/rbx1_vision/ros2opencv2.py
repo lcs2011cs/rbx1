@@ -327,6 +327,10 @@ class ROS2OpenCV2(object):
             ROI.y_offset = int(roi_box[1])
             ROI.width = int(roi_box[2])
             ROI.height = int(roi_box[3])
+
+            #Generally we just publish to topic roi, while If we track two objects at the same time, we create a new topic roi_arm
+            #Note here the roi is a rectangle aligned to x,y-axis. Actually we don't use these data for 3rd arm control
+            #The trully object tracking info is published within camshift and camshift2
             if(self.pub_arm_flag):
             	self.roi_pub_arm.publish(ROI)
             else:
