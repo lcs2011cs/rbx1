@@ -34,12 +34,19 @@ class PositionCalculator():
         # The minimum and maximum distance a target can be from the robot for us to track
         self.max_z = rospy.get_param("~max_z", 5000)
         self.min_z = rospy.get_param("~min_z", 100)
+        self.dev_threshold = rospy.get_param("~dev_threshold", 0.1)
 
         self.object_visible = False
         self.arm_visible = False        
         #position of the object and arm
         self.position = Vector3()
         self.position_arm = Vector3()
+        self.pre_position_arm = Vector3()
+        self.pre_position_arm.x = 0.0
+        self.pre_position_arm.y = 0.0
+        self.pre_position_arm.z = 0.0
+
+        self.moving_direction = Vector3()
         self.direction = Vector3()
         self.pos_pub = rospy.Publisher("direction", Vector3, queue_size=1)
         
@@ -81,10 +88,22 @@ class PositionCalculator():
         rospy.Subscriber('arm_pos', PosTrack, self.calculate_pos_arm, queue_size=1)
 
         rospy.loginfo("ROI messages detected. Starting Calculation...")
+        
+        cnt = 0
         # Begin the tracking loop
         while not rospy.is_shutdown():
             if self.object_visible and self.arm_visible:
-                #print self.position_arm.x, self.position_arm.y, self.position_arm.z
+            	cnt += 1
+            	if(cnt > 10):
+        			self.moving_direction.x = self.position_arm.x - self.pre_position_arm.x
+        			self.moving_direction.y = self.position_arm.y - self.pre_position_arm.y
+        			self.moving_direction.z = self.position_arm.z - self.pre_position_arm.z
+        			
+        			self.pre_position_arm.x = self.position_arm.x
+        			self.pre_position_arm.y = self.position_arm.y
+        			self.pre_position_arm.z = self.position_arm.z
+        			cnt = 0
+
                 self.pub_position()
             else:
                 print "Arm or Object is not visible."
@@ -133,7 +152,8 @@ class PositionCalculator():
             max_x = max(max_x,vertices[i][0])
             max_y = max(max_y,vertices[i][1])
         
-        sum_z = npoints = 0.0
+        zlist = list()
+
         for x in range(min_x, max_x):
             for y in range(min_y, max_y):
                 if( self.inarea(x,y,vertices) ):
@@ -149,11 +169,24 @@ class PositionCalculator():
                             continue
 
                         #freenect get z in millimeters
-                        sum_z += z / 1000
-                        npoints += 1.0
+                        zlist.append(z / 1000.0)
 
                     except:
                         continue
+
+        zarr = np.array(zlist);
+        zdev = abs(zarr - np.mean(zarr))
+        zindex = np.argsort(zdev)
+
+        #Drop the coordinates which are far away from mean and calculate the mean again.
+        #Increase the accurancy of z-corrdinate
+        npoints = sum_z = 0.0
+        for i  in range(0,len(zindex)):
+        	if(zdev[zindex[i]] > self.dev_threshold or i > self.scale_roi*len(zdev)):
+        		break
+        	else:
+        		npoints += 1.0
+        		sum_z += zarr[zindex[i]]
 
         if(npoints > 0.5):
             self.position.z = sum_z / npoints
@@ -182,7 +215,8 @@ class PositionCalculator():
             max_x = max(max_x,vertices[i][0])
             max_y = max(max_y,vertices[i][1])
         
-        sum_z = npoints = 0.0
+        zlist = list()
+
         for x in range(min_x, max_x):
             for y in range(min_y, max_y):
                 if( self.inarea(x,y,vertices) ):
@@ -198,11 +232,25 @@ class PositionCalculator():
                             continue
 
                         #freenect get z in millimeters
-                        sum_z += z / 1000
-                        npoints += 1.0
+                        zlist.append(z / 1000.0)
 
                     except:
                         continue
+
+        #Drop the coordinates which are far away from mean and calculate the mean again.
+        #Increase the accurancy of z-corrdinate
+        zarr = np.array(zlist);
+        zdev = abs(zarr - np.mean(zarr))
+        zindex = np.argsort(zdev)
+
+        npoints = sum_z = 0.0
+        for i  in range(0,len(zindex)):
+        	if(zdev[zindex[i]] > self.dev_threshold or i > self.scale_roi*len(zdev)):
+        		break
+        	else:
+        		npoints += 1.0
+        		sum_z += zarr[zindex[i]]
+
 
         if(npoints > 0.5):
             self.position_arm.z = sum_z / npoints
