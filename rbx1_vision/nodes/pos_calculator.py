@@ -208,8 +208,8 @@ class PositionCalculator():
         zdev = abs(zarr - np.mean(zarr))
         zindex = np.argsort(zdev)
 
-        #Drop the coordinates which are far away from mean and calculate the mean again.
-        #Increase the accurancy of z-corrdinate
+        # Drop the coordinates which are far away from mean and calculate the mean again.
+        # Increase the accurancy of z-corrdinate
         npoints = sum_z = 0.0
         for i  in range(0,len(zindex)):
         	if(zdev[zindex[i]] > self.dev_threshold or i > self.scale_roi*len(zdev)):
