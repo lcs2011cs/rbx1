@@ -61,7 +61,8 @@ class PositionCalculator():
         
         # Vector from 3rd Arm pointing to the Object. Unit is meter.
         self.pos_pub = rospy.Publisher("direction", Vector3, queue_size=1)
-        
+        self.p1_pub = rospy.Publisher("pos_1", Vector3, queue_size=1)
+        self.p2_pub = rospy.Publisher("pos_2", Vector3, queue_size=1)
         # We will get the image width and height from the camera_info topic
         self.image_width = 0
         self.image_height = 0
@@ -326,7 +327,10 @@ class PositionCalculator():
             self.direction.x = self.position.x - self.position_arm.x
             self.direction.y = self.position.y - self.position_arm.y
             self.direction.z = self.position.z - self.position_arm.z
+
             self.pos_pub.publish(self.direction)
+            self.p1_pub.publish(self.position)
+            self.p2_pub.publish(self.position_arm)
         except:
             rospy.loginfo("Publishing 3D direction Failed")
 
